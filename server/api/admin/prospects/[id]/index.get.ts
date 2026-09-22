@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
     [id],
   )
   const notes = await db().query<Record<string, any>>(
-    `select n.id, n.texte, n.created_at, a.prenom || ' ' || a.nom as auteur
+    `select n.id, n.texte, n.created_at, n.source, a.prenom || ' ' || a.nom as auteur
        from prospect_note n left join admin_user a on a.id = n.author_id
       where n.contact_id = $1 order by n.created_at desc`,
     [id],

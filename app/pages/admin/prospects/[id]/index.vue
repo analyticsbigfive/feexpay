@@ -162,7 +162,10 @@ async function ajouterNote() {
           </div>
           <NuxtLink v-if="fiche.rapports.length" :to="`/admin/prospects/${fiche.contact.id}/rapports`" class="btn btn-navy h-11 w-full gap-2 rounded-[10px] text-sm"><UiIcon name="open-in-new" :size="17" />Ouvrir le rapport client</NuxtLink>
           <div v-if="fiche.notes.length" class="mt-4 flex flex-col gap-2.5 border-t border-gray-100 pt-4">
-            <div v-for="n in fiche.notes.slice(0, 3)" :key="n.id"><p class="text-[13px] leading-[1.5] text-gray-700">{{ n.texte }}</p><p class="text-[11px] leading-[1.4] text-gray-500">{{ n.auteur ?? 'Compte supprimé' }} · {{ dateCourte(n.created_at) }}</p></div>
+            <div v-for="n in fiche.notes.slice(0, 3)" :key="n.id" :class="n.source === 'dirigeant' ? 'rounded-[10px] border border-orange-200 bg-orange-50 p-3' : undefined">
+              <p class="text-[13px] leading-[1.5] whitespace-pre-line text-gray-700">{{ n.texte }}</p>
+              <p class="mt-0.5 text-[11px] leading-[1.4]" :class="n.source === 'dirigeant' ? 'font-semibold text-orange-700' : 'text-gray-500'">{{ n.source === 'dirigeant' ? 'Le dirigeant, depuis son rapport' : (n.auteur ?? 'Compte supprimé') }} · {{ dateCourte(n.created_at) }}</p>
+            </div>
           </div>
         </div>
 

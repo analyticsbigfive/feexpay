@@ -126,6 +126,12 @@ valeur pour la remplacer.
 Le **code d'événement de test Meta** doit être vidé en production : il détourne les
 événements vers l'outil de test.
 
+L'**adresse du contact commercial** reçoit les demandes déposées depuis le bouton
+« Contacter FeexPay » du rapport. Le dirigeant est mis en réponse : répondre depuis la boîte
+lui écrit directement. La même demande apparaît sur sa fiche prospect, encadrée en orange,
+et remet son suivi à « à contacter » — sauf s'il est déjà en cours, en rendez-vous ou
+converti.
+
 ### Réglages → Leviers FeexPay — `/admin/reglages/leviers`
 
 Les leviers proposés dans l'onglet Diagnostic commercial d'une fiche, rattachés à la

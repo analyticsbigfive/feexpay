@@ -208,3 +208,107 @@ export function htmlRapport(r: RapportPublic, lien: string, champs: ChampsModele
 <tr><td style="padding:18px 32px;border-top:1px solid #E0E4EB"><p style="margin:0;font:400 12px/1.5 Poppins,'Segoe UI',sans-serif;color:#7E97BF">${t('pied')}</p></td></tr>
 </table></td></tr></table></body></html>`
 }
+
+/** Canaux proposés par la fenêtre de contact du rapport (P12). */
+export const CANAUX_CONTACT = { email: 'Email', telephone: 'Appel téléphonique', whatsapp: 'WhatsApp' } as const
+export type CanalContact = keyof typeof CANAUX_CONTACT
+
+export interface DemandeContact {
+  message: string
+  telephone: string | null
+  canal: CanalContact
+}
+
+/**
+ * Demande de contact déposée depuis le rapport (P12). L'email part vers l'adresse commerciale
+ * réglée en admin (`contact_commercial_email`), avec le dirigeant en `Reply-To` : répondre
+ * depuis la boîte suffit, sans recopier l'adresse.
+ *
+ * L'échec n'est pas silencieux mais il n'est pas non plus perdant : la demande est déjà posée
+ * sur la fiche prospect par la route appelante avant cet envoi. C'est la raison pour laquelle
+ * cette fonction renvoie l'erreur au lieu de la lever.
+ */
+export async function envoyerDemandeContact(
+  rapport: RapportPublic,
+  lien: string,
+  destinataire: string,
+  demande: DemandeContact,
+): Promise<{ sent: boolean; error?: string }> {
+  const config = useRuntimeConfig()
+  if (!config.resendApiKey) return { sent: false, error: 'RESEND_API_KEY absente' }
+  try {
+    const resend = new Resend(config.resendApiKey)
+    const { error } = await resend.emails.send({
+      from: config.resendFrom,
+      to: destinataire,
+      replyTo: rapport.contact.email,
+      subject: `Demande de contact · ${rapport.contact.prenom} ${rapport.contact.nom}${rapport.contact.entreprise ? ` (${rapport.contact.entreprise})` : ''}`,
+      html: htmlDemandeContact(rapport, lien, demande),
+      text: texteDemandeContact(rapport, lien, demande),
+    })
+    if (error) return { sent: false, error: `${error.name}: ${error.message}` }
+    return { sent: true }
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** Lignes « identité » de la demande, communes aux deux versions de l'email. */
+function lignesDemande(r: RapportPublic, demande: DemandeContact): [string, string][] {
+  return [
+    ['Nom', `${r.contact.prenom} ${r.contact.nom}`],
+    ['Entreprise', r.contact.entreprise ?? '—'],
+    ['Email', r.contact.email],
+    ['Téléphone', demande.telephone ?? r.contact.telephone ?? '—'],
+    ['Souhaite être joint par', CANAUX_CONTACT[demande.canal]],
+  ]
+}
+
+export function texteDemandeContact(r: RapportPublic, lien: string, demande: DemandeContact): string {
+  return [
+    `${r.contact.prenom} ${r.contact.nom} demande à être contacté après son diagnostic Radar.`,
+    '',
+    ...lignesDemande(r, demande).map(([k, v]) => `${k} : ${v}`),
+    '',
+    'Son message :',
+    demande.message,
+    '',
+    ...lignesResume(r),
+    '',
+    `Rapport complet : ${lien}`,
+  ].join('\n')
+}
+
+/**
+ * Email interne : même grammaire visuelle que le rapport, en plus sobre. Tables et styles à
+ * la ligne, pour les mêmes raisons qu'en haut de ce fichier.
+ */
+export function htmlDemandeContact(r: RapportPublic, lien: string, demande: DemandeContact): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const ligne = ([k, v]: [string, string]) =>
+    `<tr><td style="padding:6px 16px 6px 0;font:600 13px/1.5 Poppins,'Segoe UI',sans-serif;color:#6C7686;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0;font:400 14px/1.5 Poppins,'Segoe UI',sans-serif;color:#373E4B">${esc(v)}</td></tr>`
+  const resume = lignesResume(r)
+    .map((l) => `<li style="margin:0 0 6px;font:400 14px/1.5 Poppins,'Segoe UI',sans-serif;color:#373E4B">${esc(l)}</li>`)
+    .join('')
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Demande de contact</title></head><body style="margin:0;padding:0;background:#F6F7F9">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F6F7F9;padding:32px 16px"><tr><td align="center">
+<table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fff;border:1px solid #E0E4EB;border-radius:14px;overflow:hidden">
+<tr><td style="background:#112C56;padding:24px 32px">
+  <p style="margin:0 0 8px;font:600 12px/1 Poppins,'Segoe UI',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#F6B684">Radar by FeexPay</p>
+  <p style="margin:0;font:600 22px/1.25 Poppins,'Segoe UI',sans-serif;color:#fff">Demande de contact</p>
+</td></tr>
+<tr><td style="padding:24px 32px">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin:0 0 20px">${lignesDemande(r, demande).map(ligne).join('')}</table>
+  <p style="margin:0 0 8px;font:600 12px/1 Poppins,'Segoe UI',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6C7686">Son message</p>
+  <p style="margin:0 0 22px;padding:14px 16px;background:#F6F7F9;border-radius:10px;font:400 15px/1.6 Poppins,'Segoe UI',sans-serif;color:#373E4B;white-space:pre-wrap">${esc(demande.message)}</p>
+  <p style="margin:0 0 8px;font:600 12px/1 Poppins,'Segoe UI',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6C7686">Ses résultats</p>
+  <ul style="margin:0 0 22px;padding:0 0 0 18px">${resume}</ul>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+    <td bgcolor="#112C56" style="background:#112C56;border-radius:12px">
+      <a href="${esc(lien)}" style="display:block;padding:15px 24px;font:600 15px/17px Poppins,'Segoe UI',sans-serif;mso-line-height-rule:exactly;color:#ffffff;text-decoration:none">Ouvrir le rapport</a>
+    </td>
+  </tr></table>
+</td></tr>
+<tr><td style="padding:16px 32px;border-top:1px solid #E0E4EB"><p style="margin:0;font:400 12px/1.5 Poppins,'Segoe UI',sans-serif;color:#7E97BF">Répondre à ce message écrit directement au dirigeant. La demande figure aussi sur sa fiche dans l’administration.</p></td></tr>
+</table></td></tr></table></body></html>`
+}

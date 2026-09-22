@@ -18,7 +18,7 @@ export function rapportDeControle(modele: CleModele): RapportPublic {
     status: 'ready',
     etabliLe: new Date().toISOString(),
     version: CURRENT_VERSION,
-    contact: { prenom: 'Aya', nom: 'Konan', email: 'aya.konan@exemple.ci', entreprise: 'Atelier Nyamien' },
+    contact: { prenom: 'Aya', nom: 'Konan', email: 'aya.konan@exemple.ci', entreprise: 'Atelier Nyamien', telephone: '+2250700000000' },
     dirigeant: modele === 'rayonnement' ? null : toPublicDirigeant(rDir),
     rayonnement: modele === 'dirigeant' ? null : toPublicRayonnement(rRay, answersRay),
     croisement:

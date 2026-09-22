@@ -13,7 +13,6 @@ const token = route.params.token as string
 const { data: r, error } = await useFetch<any>(`/api/public/reports/${token}`)
 if (error.value || !r.value) throw createError({ statusCode: 404, statusMessage: 'Rapport introuvable' })
 
-const config = useRuntimeConfig()
 const nom = computed(() => `${r.value.contact.prenom} ${r.value.contact.nom}`)
 const titre = computed(() => (r.value.dirigeant ? `${nom.value} · ${r.value.dirigeant.archetype.code}` : nom.value))
 const date = computed(() =>
@@ -66,13 +65,18 @@ const suites = computed(() => {
   return out.slice(0, 3)
 })
 
-const mailto = computed(() => {
-  const sujet = encodeURIComponent(`Radar by FeexPay — ${titre.value}`)
-  const corps = encodeURIComponent(
-    `Bonjour,\n\nJ’ai réalisé le diagnostic Radar by FeexPay (${titre.value}) et je souhaite échanger sur ce que ces résultats impliquent pour mon activité.\n\nMon rapport : ${config.public.appBaseUrl}/rapport/${token}\n\n${nom.value}`,
-  )
-  return `mailto:contact.ci@feexpay.me?subject=${sujet}&body=${corps}`
-})
+/**
+ * « Contacter FeexPay » ouvre une fenêtre modale plutôt qu'un `mailto:`. Le lien mail
+ * n'ouvrait souvent rien sur mobile et dans les webmails, et son échec était invisible :
+ * la demande partait dans le vide. Elle passe maintenant par le serveur, qui écrit au
+ * conseiller et la dépose sur la fiche prospect. L'adresse reste offerte dans la fenêtre.
+ */
+const contactOuvert = ref(false)
+function ouvrirContact() {
+  contactOuvert.value = true
+  // `feexpay_cta_clicked` : événement du plan de tracking pour ce bouton (PLAN.md §7).
+  useNuxtApp().$track('feexpay_cta_clicked', { emplacement: 'rapport' })
+}
 
 useSeoMeta({ title: () => `Rapport complet · ${titre.value} — Radar by FeexPay` })
 </script>
@@ -280,10 +284,18 @@ useSeoMeta({ title: () => `Rapport complet · ${titre.value} — Radar by FeexPa
               <p class="mb-2 text-xl leading-[1.3] font-semibold text-navy-600">Envie d’en discuter ?</p>
               <p class="mb-[18px] text-[15px] leading-[1.55] text-gray-600 lg:mb-0 lg:max-w-[520px]">Échangez avec un conseiller FeexPay sur ce que ces résultats impliquent pour votre activité.</p>
             </div>
-            <a :href="mailto" class="btn btn-primary h-[52px] w-full text-base lg:w-auto lg:shrink-0 lg:px-7">Contacter FeexPay</a>
+            <button type="button" class="btn btn-primary h-[52px] w-full text-base lg:w-auto lg:shrink-0 lg:px-7" @click="ouvrirContact">Contacter FeexPay</button>
           </div>
         </div>
       </div>
     </section>
+
+    <RadarContactModale
+      v-model="contactOuvert"
+      :token="token"
+      :contact="r.contact"
+      :titre="titre"
+      :adresse-par-defaut="r.contactCommercial ?? 'contact.ci@feexpay.me'"
+    />
   </div>
 </template>

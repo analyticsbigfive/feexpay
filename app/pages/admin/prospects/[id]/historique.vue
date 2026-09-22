@@ -21,7 +21,15 @@ const evenements = computed(() => {
     e.push({ quand: r.created_at, titre: 'Rapport créé', detail: `édition ${r.editorial_version}`, icone: 'file-document-outline' })
     for (const n of r.notifications) e.push({ quand: n.created_at, titre: `Email « ${n.template} » : ${n.status}`, detail: `${n.recipient}${n.last_error ? ' · ' + n.last_error : ''}`, icone: 'email-outline' })
   }
-  for (const n of f.notes) e.push({ quand: n.created_at, titre: 'Note interne', detail: `${n.auteur ?? 'Compte supprimé'} · ${n.texte}`, icone: 'note-plus-outline' })
+  for (const n of f.notes) {
+    const duDirigeant = n.source === 'dirigeant'
+    e.push({
+      quand: n.created_at,
+      titre: duDirigeant ? 'Demande de contact' : 'Note interne',
+      detail: `${duDirigeant ? 'Le dirigeant, depuis son rapport' : (n.auteur ?? 'Compte supprimé')} · ${n.texte}`,
+      icone: duDirigeant ? 'email-fast-outline' : 'note-plus-outline',
+    })
+  }
   for (const h of f.historique) e.push({ quand: h.ts, titre: ACTIONS[h.action] ?? h.action, detail: `${h.acteur ?? 'Système'}${h.payload_min ? ' · ' + JSON.stringify(h.payload_min) : ''}`, icone: 'history' })
   return e.sort((a, b) => new Date(b.quand).getTime() - new Date(a.quand).getTime())
 })

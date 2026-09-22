@@ -15,7 +15,7 @@ export interface RapportPublic {
   status: 'pending' | 'ready' | 'revoked'
   etabliLe: string
   version: string
-  contact: { prenom: string; nom: string; email: string; entreprise: string | null }
+  contact: { prenom: string; nom: string; email: string; entreprise: string | null; telephone: string | null }
   dirigeant: PublicDirigeantResult | null
   rayonnement: PublicRayonnementResult | null
   /** Présente seulement quand les deux diagnostics figurent au rapport. */
@@ -61,10 +61,11 @@ export async function reportById(id: string | null, tokenHash?: string): Promise
     nom: string
     email_norm: string
     entreprise: string | null
+    phone_e164: string | null
     snapshot_refs: { score_snapshot_ids?: string[] }
   }>(
     `select r.id, r.status, r.created_at, r.editorial_version, r.snapshot_refs,
-            c.prenom, c.nom, c.email_norm::text, c.entreprise
+            c.prenom, c.nom, c.email_norm::text, c.entreprise, c.phone_e164
        from report r join contact c on c.id = r.contact_id
       where ($1::uuid is not null and r.id = $1::uuid) or ($1::uuid is null and r.token_hash = $2)`,
     [id, tokenHash ?? null],
@@ -122,7 +123,7 @@ export async function reportById(id: string | null, tokenHash?: string): Promise
     status: r.status,
     etabliLe: r.created_at.toISOString(),
     version: r.editorial_version,
-    contact: { prenom: r.prenom, nom: r.nom, email: r.email_norm, entreprise: r.entreprise },
+    contact: { prenom: r.prenom, nom: r.nom, email: r.email_norm, entreprise: r.entreprise, telephone: r.phone_e164 },
     dirigeant,
     rayonnement,
     croisement,
