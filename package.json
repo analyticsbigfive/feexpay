@@ -1,5 +1,6 @@
 {
   "name": "radar-feexpay",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.29.2",
   "scripts": {
@@ -18,6 +19,7 @@
     "typecheck": "pnpm -r typecheck",
     "typecheck:app": "nuxt typecheck",
     "seed:scoring": "tsx scripts/seed-scoring-version.ts",
+    "db:migrate": "node --env-file=.env scripts/migrate.mjs",
     "test:leads": "node test/api-leads.mjs",
     "test:admin": "node test/api-admin.mjs",
     "test:metier": "node test/api-metier.mjs",

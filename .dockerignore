@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+.output
+.nuxt
+.env
+.env.*
+*.log
+.git
+.github
+.idea
+deployments
+test
+docs
+MarketingBS
+Pack_Handoff_Developpement_Radar_by_FeexPay_V1.1

@@ -1,0 +1,17 @@
+services:
+  radar:
+    image: registry.feexpay.me/radar-prod:latest
+    container_name: radar
+    restart: always
+    env_file: [.env]
+    # Lu par le seed de la version du moteur au démarrage (scripts/seed-scoring-version.ts).
+    volumes:
+      - ./.env:/app/.env:ro
+    # nginx tourne sur le même VPS : le port n'est ouvert que sur la boucle locale. Docker
+    # publie ses ports en contournant ufw, "7000:7000" exposerait l'application sans HTTPS.
+    ports:
+      - "127.0.0.1:7000:7000"
+    networks: [radar-prod-network]
+networks:
+  radar-prod-network:
+    driver: bridge

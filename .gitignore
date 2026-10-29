@@ -5,8 +5,17 @@ node_modules
 .env.*
 !.env.example
 dist
+.nitro
+.cache
+.data
+coverage
 .DS_Store
 *.log
+
+# Éditeurs
+.idea/
+.vscode/
+*.swp
 
 # Outillage agents (installé localement, pas du code projet)
 .agents/
