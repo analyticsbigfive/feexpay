@@ -55,7 +55,10 @@ Puis sur le VPS :
 
 ```bash
 cd /var/www/radar.feexpay.me
-cp .env.example .env && chmod 600 .env
+cp .env.example .env
+# Lisible par le conteneur (utilisateur nodejs, uid/gid 1001), qui le monte en /app/.env
+# pour le seed ; fermé aux autres comptes du VPS.
+sudo chgrp 1001 .env && chmod 640 .env
 nano .env                  # remplir les valeurs
 chmod +x cron.sh
 crontab -e                 # ajouter les deux lignes ci-dessous
@@ -162,6 +165,10 @@ Lire le nom du fichier et l'erreur dans `docker compose logs`. Causes fréquente
   vide. Mettre `MIGRATIONS_BASELINE=true`, `docker compose up -d`, puis remettre `false`.
 - `schema "auth" does not exist` ou `role "anon" does not exist` : la base n'est pas un
   projet Supabase.
+
+**`✗ seed échoué : EACCES: permission denied, open '/app/.env'`.**
+Le conteneur ne peut pas lire le `.env` monté. `sudo chgrp 1001 .env && chmod 640 .env`,
+puis `docker compose up -d --force-recreate`.
 
 **Base injoignable (`ENETUNREACH`, `ETIMEDOUT`, `getaddrinfo`).**
 `DATABASE_URL` pointe la connexion directe au lieu du pooler, ou le VPS ne peut pas sortir
