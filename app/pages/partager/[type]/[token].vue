@@ -72,7 +72,8 @@ const texteLibre = computed(() =>
  * Tant qu'elle n'est pas prête, on retombe sur la page d'accueil — un lien qui marche.
  */
 const adresse = computed(() => (jetonCarte.value ? `${lien}/carte/${jetonCarte.value}` : lien))
-const message = computed(() => `${texteLibre.value} Faites le test avec Radar by FeexPay : ${adresse.value}`)
+const messagePour = (url: string) => `${texteLibre.value} Faites le test avec Radar by FeexPay : ${url}`
+const message = computed(() => messagePour(adresse.value))
 const whatsapp = computed(() => `https://wa.me/?text=${encodeURIComponent(message.value)}`)
 const linkedin = computed(() => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(adresse.value)}`)
 
@@ -98,6 +99,8 @@ async function copier() {
 /**
  * Partage natif. L'image au format choisi part avec, quand l'appareil sait recevoir un
  * fichier : c'est le seul chemin par lequel la carte elle-même atteint WhatsApp ou LinkedIn.
+ * Le lien de la carte publique est écrit dans le texte et non passé en `url` : avec un
+ * fichier, WhatsApp ne garde que le texte, qui devient la légende de l'image (recette 1.12).
  * Sinon, texte et lien, comme avant.
  */
 async function partagerNatif() {
@@ -105,14 +108,15 @@ async function partagerNatif() {
   const f = FORMATS[format.value]!
   if (navigator.share) {
     try {
-      const blob = await dessiner(f).catch(() => null)
+      // En parallèle : `navigator.share` doit partir peu après le geste de l'utilisateur.
+      const [blob, url] = await Promise.all([dessiner(f).catch(() => null), lienPartage()])
       const fichier = blob ? new File([blob], nomFichier(f), { type: 'image/png' }) : null
       if (fichier && navigator.canShare?.({ files: [fichier] })) {
-        await navigator.share({ files: [fichier], title: 'Radar by FeexPay', text: texteLibre.value })
+        await navigator.share({ files: [fichier], title: 'Radar by FeexPay', text: messagePour(url) })
         void publier(f)
         return
       }
-      await navigator.share({ title: 'Radar by FeexPay', text: texteLibre.value, url: await lienPartage() })
+      await navigator.share({ title: 'Radar by FeexPay', text: texteLibre.value, url })
       return
     } catch {}
   }

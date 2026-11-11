@@ -6,6 +6,7 @@
  * devient `compass-outline`).
  */
 import {
+  mdiInformationOutline,
   mdiLink,
   mdiDeleteOutline,
   mdiPlus,
@@ -95,6 +96,7 @@ const ICONS: Record<string, string> = {
   'account-outline': mdiAccountOutline,
   'alert-circle-outline': mdiAlertCircleOutline,
   'alert-outline': mdiAlertOutline,
+  'information-outline': mdiInformationOutline,
   'arm-flex-outline': mdiArmFlexOutline,
   'arrow-left': mdiArrowLeft,
   'arrow-right': mdiArrowRight,
