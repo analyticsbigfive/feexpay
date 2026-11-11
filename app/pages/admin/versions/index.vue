@@ -38,6 +38,8 @@ async function publier(v: string) {
   }
 }
 const rates = computed(() => controles.value?.controles?.filter((c: any) => !c.ok) ?? [])
+/** Défauts de conformité. Le message « N contrôles en échec » résume les contrôles rouges : il n'est pas recompté. */
+const ecarts = computed(() => rates.value.length + (controles.value?.erreurs?.filter((e: string) => !/contrôles? en échec/.test(e)).length ?? 0))
 const ACTIONS: Record<string, string> = { 'version.publish': 'Publication', 'version.reactivate': 'Réactivation' }
 </script>
 
@@ -72,12 +74,21 @@ const ACTIONS: Record<string, string> = { 'version.publish': 'Publication', 'ver
             <AdminSquelette v-else-if="!controles" :lignes="3" />
             <template v-else>
               <div class="mb-4 flex flex-wrap items-center gap-3">
-                <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="controles.ok ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'">{{ controles.ok ? 'Tous les contrôles passent' : `${rates.length + (controles.erreurs?.length ?? 0)} écart(s)` }}</span>
-                <span class="text-[13px] text-gray-500">{{ controles.controles.length }} contrôles exécutés</span>
-                <button v-if="peut('admin') && controles.ok" type="button" class="btn btn-primary ml-auto h-10 rounded-[10px] px-4 text-sm" :disabled="occupe" @click="publier(selection!)">
+                <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="controles.ok ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'">{{ controles.ok ? 'Conforme' : `${ecarts} écart${ecarts > 1 ? 's' : ''}` }}</span>
+                <span class="text-[13px] text-gray-500">{{ controles.controles.length - rates.length }} / {{ controles.controles.length }} contrôles passent</span>
+                <button v-if="peut('admin') && controles.publiable" type="button" class="btn btn-primary ml-auto h-10 rounded-[10px] px-4 text-sm" :disabled="occupe" @click="publier(selection!)">
                   {{ data.versions.find((v: any) => v.version === selection)?.status === 'archived' ? 'Réactiver cette version' : 'Publier cette version' }}
                 </button>
               </div>
+              <p v-if="controles.empreinte?.code" class="mb-3 flex items-start gap-2 text-sm" :class="controles.empreinte.identique ? 'text-gray-700' : 'text-red-600'">
+                <UiIcon :name="controles.empreinte.identique ? 'check-circle-outline' : 'alert-circle-outline'" :size="16" class="mt-0.5 shrink-0" :class="controles.empreinte.identique ? 'text-green-600' : ''" />
+                <span v-if="!controles.empreinte.base">Empreinte du moteur déployé <code class="font-mono text-xs">{{ controles.empreinte.code.slice(0, 16) }}…</code> · version pas encore enregistrée en base.</span>
+                <span v-else-if="controles.empreinte.identique">Empreinte en base identique à celle du moteur déployé : <code class="font-mono text-xs">{{ controles.empreinte.code.slice(0, 16) }}…</code></span>
+                <span v-else>Empreinte en base <code class="font-mono text-xs">{{ controles.empreinte.base.slice(0, 16) }}…</code> ≠ moteur déployé <code class="font-mono text-xs">{{ controles.empreinte.code.slice(0, 16) }}…</code></span>
+              </p>
+              <ul v-if="controles.remarques?.length" class="mb-3 flex flex-col gap-1.5">
+                <li v-for="e in controles.remarques" :key="e" class="flex items-start gap-2 text-sm text-gray-600"><UiIcon name="information-outline" :size="16" class="mt-0.5 shrink-0 text-navy-600" />{{ e }}</li>
+              </ul>
               <ul v-if="controles.erreurs?.length" class="mb-4 flex flex-col gap-1.5">
                 <li v-for="e in controles.erreurs" :key="e" class="flex items-start gap-2 text-sm text-red-600"><UiIcon name="alert-circle-outline" :size="16" class="mt-0.5 shrink-0" />{{ e }}</li>
               </ul>

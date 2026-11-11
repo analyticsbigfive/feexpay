@@ -59,33 +59,55 @@ export async function registreVersions(): Promise<VersionRegistre[]> {
 }
 
 export interface Publication {
+  /** Conformité : la version existe dans le moteur déployé, son empreinte correspond et tous les contrôles passent. */
   ok: boolean
+  /** Conforme et pas déjà publiée : le bouton de publication ou de réactivation peut s'afficher. */
+  publiable: boolean
   controles: ResultatControle[]
+  /** Défauts de conformité. Vide quand `ok` est vrai. */
   erreurs: string[]
+  /** État de la version qui empêche de la publier sans être un défaut (« déjà publiée »). */
+  remarques: string[]
+  /** Empreinte enregistrée en base comparée à celle du moteur déployé. `base` est nul pour une version jamais publiée. */
+  empreinte: { base: string | null; code: string | null; identique: boolean }
   action: 'publiee' | 'reactivee' | 'refusee'
 }
 
-/** Contrôles avant publication, sans effet en base. */
+/**
+ * Contrôles avant publication, sans effet en base. « Déjà publiée » est une remarque et non
+ * un écart : la version publiée doit pouvoir s'afficher conforme.
+ */
 export async function controlerVersion(version: string): Promise<Omit<Publication, 'action'>> {
-  const erreurs: string[] = []
   if (!listVersions().includes(version)) {
-    return { ok: false, controles: [], erreurs: [`La version ${version} n’existe pas dans le moteur déployé.`] }
+    return {
+      ok: false,
+      publiable: false,
+      controles: [],
+      erreurs: [`La version ${version} n’existe pas dans le moteur déployé.`],
+      remarques: [],
+      empreinte: { base: null, code: null, identique: false },
+    }
   }
+  const erreurs: string[] = []
+  const remarques: string[] = []
   const code = getVersion(version)
   const { rows } = await db().query<{ status: string; checksum: string }>(`select status, checksum from scoring_version where version = $1`, [version])
-  if (rows[0] && rows[0].checksum !== code.checksum) {
-    erreurs.push(`Le checksum en base (${rows[0].checksum.slice(0, 12)}…) diffère de celui du code (${code.checksum.slice(0, 12)}…) : une version publiée est immuable, publier une nouvelle version.`)
+  const base = rows[0]?.checksum ?? null
+  const identique = base === null || base === code.checksum
+  if (!identique) {
+    erreurs.push(`Le checksum en base (${base!.slice(0, 12)}…) diffère de celui du code (${code.checksum.slice(0, 12)}…) : une version publiée est immuable, publier une nouvelle version.`)
   }
-  if (rows[0]?.status === 'published') erreurs.push(`La version ${version} est déjà publiée.`)
   const controles = executerControles(version)
   const rates = controles.filter((c) => !c.ok)
   if (rates.length) erreurs.push(`${rates.length} contrôle${rates.length > 1 ? 's' : ''} en échec.`)
-  return { ok: erreurs.length === 0, controles, erreurs }
+  if (rows[0]?.status === 'published') remarques.push(`La version ${version} est la version publiée.`)
+  const ok = erreurs.length === 0
+  return { ok, publiable: ok && remarques.length === 0, controles, erreurs, remarques, empreinte: { base, code: code.checksum, identique } }
 }
 
 export async function publierVersion(event: H3Event, version: string): Promise<Publication> {
   const c = await controlerVersion(version)
-  if (!c.ok) return { ...c, action: 'refusee' }
+  if (!c.publiable) return { ...c, erreurs: [...c.erreurs, ...c.remarques], action: 'refusee' }
   const code = getVersion(version)
   const admin = event.context.admin as { user: { id: string } }
 
